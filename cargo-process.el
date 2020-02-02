@@ -82,6 +82,11 @@
   :type 'boolean
   :group 'cargo-process)
 
+(defcustom cargo-process--use-relative-manifest-path 't
+  "Non-nil to use the shorter relative manifest path to commands."
+  :type 'boolean
+  :group 'cargo-process)
+
 (defcustom cargo-process--start-in-workspace-root 't
   "Non-nil to start at workspace root to run commands."
   :type 'boolean
@@ -321,11 +326,16 @@ for error reporting."
            (workspace-root (cdr (assoc 'workspace_root metadata-json))))
       workspace-root)))
 
-(defun manifest-path-argument (name)
-  (let ((manifest-filename (cargo-process--project-root "Cargo.toml")))
-    (when (and manifest-filename
-               (not (member name cargo-process--no-manifest-commands)))
-      (concat "--manifest-path " (shell-quote-argument manifest-filename)))))
+(defun cargo-process--manifest-path-argument (name)
+  (unless (member name cargo-process--no-manifest-commands)
+    (let ((manifest-filename (cargo-process--project-root "Cargo.toml")))
+      (when manifest-filename
+        (concat
+         "--manifest-path "
+         (shell-quote-argument
+          (if cargo-process--use-relative-manifest-path
+              (file-relative-name manifest-filename default-directory)
+            manifest-filename)))))))
 
 (defun cargo-process--start (name command &optional last-cmd opens-external)
   "Start the Cargo process NAME with the cargo command COMMAND.
@@ -334,24 +344,23 @@ Returns the created process."
   (set-rust-backtrace command)
   (let* ((buffer (concat "*Cargo " name "*"))
          (project-root (cargo-process--project-root))
+         ;; Must change the CWD before getting the manifest path.
+         (default-directory (or project-root default-directory))
          (cmd
           (or last-cmd
               (cargo-process--maybe-read-command
                (cargo-process--augment-cmd-for-os opens-external
                                                   (mapconcat #'identity (list (shell-quote-argument cargo-process--custom-path-to-bin)
                                                                               command
-                                                                              (manifest-path-argument name)
+                                                                              (cargo-process--manifest-path-argument name)
                                                                               cargo-process--command-flags)
-                                                             " ")))))
-         (default-directory (or project-root default-directory)))
+                                                             " "))))))
     (save-some-buffers (not compilation-ask-about-save)
                        (lambda ()
                          (and project-root
                               buffer-file-name
                               (string-prefix-p project-root (file-truename buffer-file-name)))))
     (setq cargo-process-last-command (list name command cmd))
-    (let ((default-directory (or (cargo-process--workspace-root)
-                                 default-directory)))
     (let ((default-directory (if cargo-process--start-in-workspace-root
                                  (or (cargo-process--workspace-root)
                                      default-directory)
