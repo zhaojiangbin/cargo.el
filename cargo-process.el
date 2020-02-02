@@ -82,6 +82,11 @@
   :type 'boolean
   :group 'cargo-process)
 
+(defcustom cargo-process--start-in-workspace-root 't
+  "Non-nil to start at workspace root to run commands."
+  :type 'boolean
+  :group 'cargo-process)
+
 (defcustom cargo-process--command-flags ""
   "Flags to be added to every cargo command when run."
   :group 'cargo-process
@@ -347,6 +352,10 @@ Returns the created process."
     (setq cargo-process-last-command (list name command cmd))
     (let ((default-directory (or (cargo-process--workspace-root)
                                  default-directory)))
+    (let ((default-directory (if cargo-process--start-in-workspace-root
+                                 (or (cargo-process--workspace-root)
+                                     default-directory)
+                               default-directory)))
       (compilation-start cmd 'cargo-process-mode (lambda(_) buffer)))
     (let ((process (get-buffer-process buffer)))
       (set-process-sentinel process 'cargo-process--finished-sentinel)
