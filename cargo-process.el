@@ -92,7 +92,7 @@
   "Keymap for Cargo major mode.")
 
 (defvar cargo-process--no-manifest-commands
-  '("New" "Init" "Search" "Fmt" "Audit")
+  '("New" "Init" "Search" "Fmt" "Audit" "Help")
   "These commands should not specify a manifest file.")
 
 (defvar cargo-process-last-command nil "Command used last for repeating.")
@@ -189,6 +189,10 @@
 
 (defcustom cargo-process--command-audit "audit -f"
   "Subcommand used by `cargo-process-audit'."
+  :type 'string)
+
+(defcustom cargo-process--command-help "help"
+  "Subcommand used by `cargo-process-help'."
   :type 'string)
 
 (defvar cargo-process-favorite-crates nil)
@@ -681,6 +685,13 @@ Requires Cargo Audit to be installed."
   (cargo-process--start "Audit" (concat cargo-process--command-audit
                                         " "
                                         (cargo-process--project-root "Cargo.lock"))))
+
+;;;###autoload
+(defun cargo-process-help ()
+  "Run the cargo command with --help.
+With the prefix argument, modify the command's invocation."
+  (interactive)
+  (cargo-process--start "Help" cargo-process--command-help))
 
 ;;;###autoload
 (defun cargo-process-rm (crate)
